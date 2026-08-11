@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شجرة التوزيع - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="site-header"></header>
+        <main class="main-content">
+            <div class="container">
+                <div class="breadcrumb">
+                    <a href="/admin-dashboard">لوحة التحكم</a>
+                    <span class="breadcrumb-separator">›</span>
+                    <span class="breadcrumb-current">شجرة التوزيع</span>
+                </div>
+                <h1 class="page-title">شجرة التوزيع</h1>
+                <p class="page-subtitle">الصف ← المادة ← الشعبة ← المعلمة</p>
+                <div id="tree"></div>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container"><p>البيرة الاساسية المختلطه</p></div>
+        </footer>
+    </div>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+        async function init() {
+            const user = await checkAuth();
+            if (!user || user.role !== 'admin') { window.location.href = '/login'; return; }
+            loadTree();
+        }
+        
+        async function loadTree() {
+            try {
+                const data = await apiClient.get('/api/admin/distribution');
+                const tree = data.distribution;
+                const container = document.getElementById('tree');
+                
+                let html = '<div class="card">';
+                Object.values(tree).forEach(gradeNode => {
+                    html += renderGrade(gradeNode);
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (err) {
+                document.getElementById('tree').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        }
+        
+        function renderGrade(node) {
+            let html = `<div class="tree-node">
+                <div class="tree-header tree-grade" onclick="toggleNode(this)">
+                    <span class="tree-toggle">▶</span>
+                    <strong>🏫 الصف ${node.grade}</strong>
+                </div>
+                <div class="tree-children hidden">`;
+            Object.values(node.subjects).forEach(subj => {
+                html += renderSubject(subj);
+            });
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderSubject(node) {
+            let html = `<div class="tree-node">
+                <div class="tree-header tree-subject" onclick="toggleNode(this)">
+                    <span class="tree-toggle">▶</span>
+                    <span>📖 ${node.name}</span>
+                </div>
+                <div class="tree-children hidden">`;
+            Object.values(node.sections).forEach(sec => {
+                html += renderSection(sec);
+            });
+            html += '</div></div>';
+            return html;
+        }
+        
+        function renderSection(node) {
+            let html = `<div class="tree-node">
+                <div class="tree-header tree-section" onclick="toggleNode(this)">
+                    <span class="tree-toggle">▶</span>
+                    <span>👥 شعبة ${node.section} (${node.teachers.length} معلمة)</span>
+                </div>
+                <div class="tree-children hidden">`;
+            node.teachers.forEach(t => {
+                html += `<div class="tree-header tree-teacher">👩‍🏫 ${t.name}</div>`;
+            });
+            html += '</div></div>';
+            return html;
+        }
+        
+        function toggleNode(header) {
+            const children = header.nextElementSibling;
+            const toggle = header.querySelector('.tree-toggle');
+            if (children) {
+                children.classList.toggle('hidden');
+                toggle.classList.toggle('expanded');
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

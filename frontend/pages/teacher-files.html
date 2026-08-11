@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ملفاتي - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="site-header"></header>
+        <main class="main-content">
+            <div class="container">
+                <div class="breadcrumb">
+                    <a href="/teacher-dashboard">لوحة التحكم</a>
+                    <span class="breadcrumb-separator">›</span>
+                    <span class="breadcrumb-current" id="bc-current">ملفاتي</span>
+                </div>
+                <div class="flex-between mb-2">
+                    <h1 class="page-title" id="page-title">ملفاتي</h1>
+                    <a href="#" id="upload-link" class="btn btn-secondary btn-sm">⬆️ رفع ملف جديد</a>
+                </div>
+                <div id="alert"></div>
+                <div id="files-list"></div>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container"><p>البيرة الاساسية المختلطه</p></div>
+        </footer>
+    </div>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+        async function init() {
+            const user = await checkAuth();
+            if (!user || user.role !== 'teacher') {
+                window.location.href = '/login';
+                return;
+            }
+            
+            const params = new URLSearchParams(window.location.search);
+            const subject = params.get('subject');
+            const grade = params.get('grade');
+            const section = params.get('section');
+            
+            document.getElementById('bc-current').textContent = `${subject} - الصف ${grade} - شعبة ${section}`;
+            document.getElementById('page-title').textContent = `ملفات: ${subject}`;
+            document.getElementById('upload-link').href = `/teacher-upload?subject=${encodeURIComponent(subject)}&grade=${grade}&section=${section}`;
+            
+            try {
+                const data = await apiClient.get(`/api/files/assignment?subject=${encodeURIComponent(subject)}&grade=${grade}&section=${section}`);
+                renderFiles(data.files || [], subject, grade, section);
+            } catch (err) {
+                document.getElementById('files-list').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        }
+        
+        function renderFiles(files, subject, grade, section) {
+            const container = document.getElementById('files-list');
+            const typeLabels = { lesson: 'درس', worksheet: 'ورقة عمل', exam: 'امتحان', activity: 'نشاط', plan: 'خطة', other: 'أخرى' };
+            
+            if (files.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📂</div>
+                        <div class="empty-state-title">لا توجد ملفات</div>
+                        <p>لم تقم برفع أي ملفات لهذا التكليف بعد.</p>
+                        <a href="/teacher-upload?subject=${encodeURIComponent(subject)}&grade=${grade}&section=${section}" class="btn btn-primary btn-sm mt-2">رفع أول ملف</a>
+                    </div>`;
+                return;
+            }
+            
+            let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+            files.forEach(f => {
+                html += `
+                    <div class="file-card">
+                        <div class="file-icon">📄</div>
+                        <div class="file-info">
+                            <div class="file-name">${f.file_name}</div>
+                            <div class="file-meta">${typeLabels[f.file_type] || f.file_type} • ${new Date(f.uploaded_at).toLocaleDateString('ar-SA')}</div>
+                        </div>
+                        <div class="file-actions">
+                            <a href="/api/files/${f.id}/download" class="btn btn-primary btn-sm">تحميل</a>
+                            <button onclick="deleteFile(${f.id})" class="btn btn-danger btn-sm">حذف</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        async function deleteFile(id) {
+            if (!confirm('هل أنت متأكدة من حذف هذا الملف؟')) return;
+            try {
+                await apiClient.delete(`/api/files/${id}`);
+                document.getElementById('alert').innerHTML = '<div class="alert alert-success">تم الحذف بنجاح</div>';
+                init();
+            } catch (err) {
+                document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

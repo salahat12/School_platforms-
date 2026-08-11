@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#2c5f7c"/>
+      <stop offset="1" stop-color="#4a8ab0"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" rx="20" fill="#ffffff"/>
+  <g transform="translate(20,20)">
+    <g transform="scale(0.6)">
+      <path d="M50 40c10-8 30-8 40 0v40c-10-6-30-6-40 0V40z" fill="url(#g)"/>
+      <path d="M90 40c10-8 30-8 40 0v40c-10-6-30-6-40 0V40z" fill="#e8a838" opacity="0.95"/>
+      <rect x="40" y="80" width="80" height="8" fill="#2c5f7c" rx="4"/>
+    </g>
+    <text x="110" y="110" font-family="Noto Sans Arabic, Arial" font-size="16" fill="#2c5f7c" text-anchor="end">البيرة الاساسية المختلطه</text>
+  </g>
+</svg>

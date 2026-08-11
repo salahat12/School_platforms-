@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الشُّعب - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="site-header"></header>
+        <main class="main-content">
+            <div class="container">
+                <div class="breadcrumb">
+                    <a href="/grades">الصفوف</a>
+                    <span class="breadcrumb-separator">›</span>
+                    <a href="/grade/${grade}" id="bc-grade">الصف</a>
+                    <span class="breadcrumb-separator">›</span>
+                    <span class="breadcrumb-current" id="subject-name"></span>
+                </div>
+                <h1 class="page-title">الشُّعب الدراسية</h1>
+                <div id="sections-list" class="card-grid mt-3"></div>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container"><p>البيرة الاساسية المختلطه</p></div>
+        </footer>
+    </div>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+        const parts = window.location.pathname.split('/');
+        const grade = parts[2];
+        const subject = decodeURIComponent(parts[4]);
+        
+        document.getElementById('bc-grade').href = '/grade/' + grade;
+        document.getElementById('bc-grade').textContent = 'الصف ' + grade;
+        document.getElementById('subject-name').textContent = subject;
+        
+        async function loadSections() {
+            const container = document.getElementById('sections-list');
+            try {
+                const data = await apiClient.get(`/api/public/grades/${grade}/subjects/${encodeURIComponent(subject)}/sections`);
+                let html = '';
+                data.sections.forEach(s => {
+                    html += `
+                        <a href="/grade/${grade}/subject/${encodeURIComponent(subject)}/section/${s.code}" class="section-card">
+                            <div>
+                                <div class="section-code">شعبة ${s.code}</div>
+                                <div class="section-name">${s.name}</div>
+                            </div>
+                            <span style="font-size: 1.5rem; color: var(--primary);">←</span>
+                        </a>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        }
+        document.addEventListener('DOMContentLoaded', loadSections);
+    </script>
+</body>
+</html>

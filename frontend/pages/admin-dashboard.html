@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة المدير - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="site-header"></header>
+        <main class="main-content">
+            <div class="container">
+                <h1 class="page-title">لوحة تحكم المدير</h1>
+                <p class="page-subtitle">إحصائيات ونظرة عامة على النظام</p>
+                <div id="alert"></div>
+                <div class="stats-grid" id="stats"></div>
+                <div class="card-grid mt-3">
+                    <a href="/admin-teachers" class="card text-center">
+                        <div style="font-size: 2.5rem; margin-bottom: 12px;">👩‍🏫</div>
+                        <h3 class="card-title">إدارة المعلمات</h3>
+                        <p style="color: var(--text-light); margin-top: 8px;">إضافة، تعديل، تعيين مواد</p>
+                    </a>
+                    <a href="/admin-distribution" class="card text-center">
+                        <div style="font-size: 2.5rem; margin-bottom: 12px;">🌳</div>
+                        <h3 class="card-title">شجرة التوزيع</h3>
+                        <p style="color: var(--text-light); margin-top: 8px;">عرض توزيع الصفوف والمواد والشُّعب</p>
+                    </a>
+                    <a href="/admin-files" class="card text-center">
+                        <div style="font-size: 2.5rem; margin-bottom: 12px;">📁</div>
+                        <h3 class="card-title">إدارة الملفات</h3>
+                        <p style="color: var(--text-light); margin-top: 8px;">عرض وحذف وتعديل رؤية الملفات</p>
+                    </a>
+                </div>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container"><p>البيرة الاساسية المختلطه</p></div>
+        </footer>
+    </div>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+        async function init() {
+            const user = await checkAuth();
+            if (!user || user.role !== 'admin') {
+                window.location.href = '/login';
+                return;
+            }
+            loadStats();
+        }
+        
+        async function loadStats() {
+            try {
+                const data = await apiClient.get('/api/admin/stats');
+                const s = data.stats;
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card"><div class="stat-icon">👩‍🏫</div><div class="stat-number">${s.teachers}</div><div class="stat-label">معلمة</div></div>
+                    <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-number">${s.subjects}</div><div class="stat-label">مادة</div></div>
+                    <div class="stat-card"><div class="stat-icon">🏫</div><div class="stat-number">${s.grades}</div><div class="stat-label">صف</div></div>
+                    <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-number">${s.sections}</div><div class="stat-label">شعبة</div></div>
+                    <div class="stat-card"><div class="stat-icon">📁</div><div class="stat-number">${s.files}</div><div class="stat-label">ملف</div></div>
+                    <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-number">${s.assignments}</div><div class="stat-label">تكليف</div></div>
+                `;
+            } catch (err) {
+                document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        }
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

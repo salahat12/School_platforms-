@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المعلمات - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="site-header"></header>
+        <main class="main-content">
+            <div class="container">
+                <div class="breadcrumb">
+                    <a href="/admin-dashboard">لوحة التحكم</a>
+                    <span class="breadcrumb-separator">›</span>
+                    <span class="breadcrumb-current">المعلمات</span>
+                </div>
+                <div class="flex-between mb-2">
+                    <h1 class="page-title">إدارة المعلمات</h1>
+                    <button class="btn btn-primary" onclick="showAddModal()">+ إضافة معلمة</button>
+                </div>
+                <div id="alert"></div>
+                <div id="duplicate-warning"></div>
+                <div id="teachers-table"></div>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container"><p>البيرة الاساسية المختلطه</p></div>
+        </footer>
+    </div>
+    
+    <div id="modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">إضافة معلمة</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="teacherForm">
+                    <input type="hidden" id="edit-id">
+                    <div class="form-group">
+                        <label class="form-label">الاسم الكامل</label>
+                        <input type="text" class="form-input" id="t-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">البريد الشخصي</label>
+                        <input type="email" class="form-input" id="t-personal">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">البريد المدرسي</label>
+                        <input type="email" class="form-input" id="t-school">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">حالة الملفات</label>
+                        <select class="form-select" id="t-ready">
+                            <option value="not_ready_yet">لم تجهز بعد</option>
+                            <option value="some_ready">بعض الملفات جاهزة</option>
+                            <option value="all_ready">جميع الملفات جاهزة</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="password-group">
+                        <label class="form-label">كلمة المرور</label>
+                        <input type="password" class="form-input" id="t-password">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+                <button class="btn btn-primary" onclick="saveTeacher()">حفظ</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+        async function init() {
+            const user = await checkAuth();
+            if (!user || user.role !== 'admin') { window.location.href = '/login'; return; }
+            loadTeachers();
+            checkDuplicates();
+        }
+        
+        async function loadTeachers() {
+            try {
+                const data = await apiClient.get('/api/teachers');
+                const container = document.getElementById('teachers-table');
+                if (data.teachers.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><div class="empty-state-title">لا توجد معلمات</div></div>';
+                    return;
+                }
+                let html = `<table class="data-table"><thead><tr><th>الاسم</th><th>البريد الشخصي</th><th>البريد المدرسي</th><th>التكليفات</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>`;
+                data.teachers.forEach(t => {
+                    const statusBadge = {
+                        'all_ready': '<span class="badge badge-success">جاهزة</span>',
+                        'some_ready': '<span class="badge badge-warning">بعضها</span>',
+                        'not_ready_yet': '<span class="badge badge-danger">لم تجهز</span>'
+                    }[t.has_ready_files] || '';
+                    html += `<tr>
+                        <td>${t.full_name}</td>
+                        <td>${t.personal_email || '-'}</td>
+                        <td>${t.school_email || '-'}</td>
+                        <td>${t.assignment_count}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button onclick="editTeacher(${t.id})" class="btn btn-sm btn-outline">تعديل</button>
+                            <button onclick="deleteTeacher(${t.id})" class="btn btn-sm btn-danger">حذف</button>
+                            <a href="/admin-teachers#assign-${t.id}" class="btn btn-sm btn-secondary">تكليفات</a>
+                        </td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (err) {
+                document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        }
+        
+        async function checkDuplicates() {
+            try {
+                const data = await apiClient.get('/api/admin/duplicate-emails');
+                if (data.duplicates.length > 0) {
+                    let html = '<div class="alert alert-warning" style="margin-bottom: 20px;"><strong>⚠️ تنبيه:</strong> البريد المدرسي التالي مستخدم من قبل أكثر من معلمة:<ul style="margin-top: 8px;">';
+                    data.duplicates.forEach(d => {
+                        html += `<li><strong>${d.school_email}</strong> (${d.count} معلمات: ${d.teachers})</li>`;
+                    });
+                    html += '</ul><p style="margin-top: 8px;">يُنصح بتوفير بريد فريد لكل معلمة.</p></div>';
+                    document.getElementById('duplicate-warning').innerHTML = html;
+                }
+            } catch (err) { console.error(err); }
+        }
+        
+        function showAddModal() {
+            document.getElementById('modal-title').textContent = 'إضافة معلمة';
+            document.getElementById('teacherForm').reset();
+            document.getElementById('edit-id').value = '';
+            document.getElementById('password-group').classList.remove('hidden');
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        
+        function editTeacher(id) {
+            document.getElementById('modal-title').textContent = 'تعديل معلمة';
+            document.getElementById('edit-id').value = id;
+            document.getElementById('password-group').classList.add('hidden');
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+        
+        async function saveTeacher() {
+            const id = document.getElementById('edit-id').value;
+            const body = {
+                full_name: document.getElementById('t-name').value,
+                personal_email: document.getElementById('t-personal').value,
+                school_email: document.getElementById('t-school').value,
+                has_ready_files: document.getElementById('t-ready').value
+            };
+            const password = document.getElementById('t-password').value;
+            if (password) body.password = password;
+            
+            try {
+                if (id) {
+                    await apiClient.put(`/api/teachers/${id}`, body);
+                } else {
+                    if (!password) { alert('كلمة المرور مطلوبة'); return; }
+                    await apiClient.post('/api/teachers', body);
+                }
+                closeModal();
+                loadTeachers();
+                document.getElementById('alert').innerHTML = '<div class="alert alert-success">تم الحفظ بنجاح</div>';
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+        
+        async function deleteTeacher(id) {
+            if (!confirm('هل أنت متأكد من حذف هذه المعلمة؟')) return;
+            try {
+                await apiClient.delete(`/api/teachers/${id}`);
+                loadTeachers();
+            } catch (err) {
+                document.getElementById('alert').innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

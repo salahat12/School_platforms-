@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المساعد الذكي - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="site-header"></header>
+        <main class="main-content">
+            <div class="container">
+                <h1 class="page-title">المساعد الذكي 🤖</h1>
+                <p class="page-subtitle">اسألني أي سؤال يخص المنهج أو المنصة</p>
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-message bot">مرحباً! هل هناك أي سؤال يمكنني مساعدتك فيه؟</div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" class="chat-input" id="chat-input" placeholder="اكتب سؤالك هنا..." onkeypress="if(event.key==='Enter') sendMessage()">
+                        <button class="btn btn-primary" onclick="sendMessage()">إرسال</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container"><p>البيرة الاساسية المختلطه</p></div>
+        </footer>
+    </div>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            const messages = document.getElementById('chat-messages');
+            messages.innerHTML += `<div class="chat-message user">${msg}</div>`;
+            input.value = '';
+            messages.scrollTop = messages.scrollHeight;
+            
+            try {
+                const data = await apiClient.post('/api/chat', { message: msg });
+                messages.innerHTML += `<div class="chat-message bot">${data.response}</div>`;
+                messages.scrollTop = messages.scrollHeight;
+            } catch (err) {
+                messages.innerHTML += `<div class="chat-message bot" style="color: var(--danger);">عذراً، حدث خطأ. يرجى المحاولة لاحقاً.</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

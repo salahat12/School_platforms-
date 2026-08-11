@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>رفع ملف - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <header class="site-header"></header>
+        <main class="main-content">
+            <div class="container">
+                <div class="breadcrumb">
+                    <a href="/teacher-dashboard">لوحة التحكم</a>
+                    <span class="breadcrumb-separator">›</span>
+                    <span class="breadcrumb-current">رفع ملف جديد</span>
+                </div>
+                <h1 class="page-title">رفع ملف تعليمي</h1>
+                <div id="alert"></div>
+                <div class="card" style="max-width: 600px;">
+                    <form id="uploadForm">
+                                <div class="form-group">
+                                    <label class="form-label">المادة</label>
+                                    <select class="form-select" id="subject" required>
+                                        <option value="العربي">العربي</option>
+                                        <option value="الانجليزي">الانجليزي</option>
+                                        <option value="الرياضيات">الرياضيات</option>
+                                        <option value="علوم">علوم</option>
+                                    </select>
+                                </div>
+                        <div class="form-group">
+                            <label class="form-label">الصف</label>
+                            <input type="text" class="form-input" id="grade" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">الشعبة</label>
+                            <select class="form-select" id="section"></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">نوع الملف</label>
+                            <select class="form-select" id="file_type" required>
+                                <option value="lesson">درس</option>
+                                <option value="worksheet">ورقة عمل</option>
+                                <option value="exam">امتحان</option>
+                                <option value="activity">نشاط</option>
+                                <option value="plan">خطة</option>
+                                <option value="other">أخرى</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">اسم الملف (اختياري)</label>
+                            <input type="text" class="form-input" id="file_name" placeholder="اسم وصفي للملف">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">الملف</label>
+                            <input type="file" class="form-input" id="file" required>
+                            <small style="color: var(--text-light);">PDF, Word, Excel, PowerPoint, صور (بحد أقصى 10 ميجابايت)</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">رفع الملف</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+        <footer class="site-footer">
+            <div class="container"><p>البيرة الاساسية المختلطه</p></div>
+        </footer>
+    </div>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/nav.js"></script>
+    <script>
+        async function init() {
+            const user = await checkAuth();
+            if (!user || user.role !== 'teacher') {
+                window.location.href = '/login';
+                return;
+            }
+            
+            const params = new URLSearchParams(window.location.search);
+            const subject = params.get('subject');
+            const grade = params.get('grade');
+            const section = params.get('section');
+
+            if (subject) document.getElementById('subject').value = subject;
+            if (grade) document.getElementById('grade').value = 'الصف ' + grade;
+
+            try {
+                const data = await apiClient.get('/api/assignments/my');
+                const match = data.assignments.filter(a => (!subject || a.subject === subject) && (!grade || a.grade == grade));
+                const rawSections = [...new Set(match.map(a => a.section))];
+
+                const allowed = ['أ','ا','ب','ج','A','B','C','a','b','c'];
+                const normalize = s => {
+                    if (!s) return null;
+                    const ch = String(s).trim().charAt(0);
+                    if (ch === 'A' || ch === 'a' || ch === 'ا') return 'أ';
+                    if (ch === 'B' || ch === 'b') return 'ب';
+                    if (ch === 'C' || ch === 'c') return 'ج';
+                    if (['أ','ب','ج'].includes(ch)) return ch;
+                    return null;
+                };
+
+                const normalized = rawSections.map(normalize).filter(Boolean);
+                const unique = [...new Set(normalized)].filter(s => ['أ','ب','ج'].includes(s));
+
+                const sel = document.getElementById('section');
+                if (unique.length === 0) {
+                    // default to A/B/C
+                    sel.innerHTML = ['أ','ب','ج'].map(s => `<option value="${s}">شعبة ${s}</option>`).join('');
+                } else {
+                    sel.innerHTML = unique.map(s => `<option value="${s}">شعبة ${s}</option>`).join('');
+                }
+
+                if (section) {
+                    const norm = normalize(section);
+                    if (norm && unique.includes(norm)) sel.value = norm;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const alert = document.getElementById('alert');
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('subject', document.getElementById('subject').value);
+            formData.append('grade', document.getElementById('grade').value.replace('الصف ', ''));
+            formData.append('section', document.getElementById('section').value);
+            formData.append('file_type', document.getElementById('file_type').value);
+            formData.append('file_name', document.getElementById('file_name').value);
+            formData.append('file', document.getElementById('file').files[0]);
+            
+            try {
+                await apiClient.upload('/api/files/upload', formData);
+                alert.innerHTML = '<div class="alert alert-success">تم رفع الملف بنجاح!</div>';
+                setTimeout(() => window.location.href = '/teacher-dashboard', 1500);
+            } catch (err) {
+                alert.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+                btn.disabled = false;
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - البيرة الاساسية المختلطه</title>
+    <link rel="stylesheet" href="/css/main.css">
+</head>
+<body class="login-page">
+    <div class="login-box">
+        <div class="login-logo">
+            <div style="font-size: 3rem;">🏫</div>
+            <h1>منصة البيرة الاساسية المختلطه</h1>
+        </div>
+        <div id="alert"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label">البريد الإلكتروني</label>
+                <input type="email" class="form-input" id="email" required placeholder="أدخل بريدك الإلكتروني">
+            </div>
+            <div class="form-group">
+                <label class="form-label">كلمة المرور</label>
+                <input type="password" class="form-input" id="password" required placeholder="أدخل كلمة المرور">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">تسجيل الدخول</button>
+        </form>
+        <div style="text-align: center; margin-top: 20px; color: var(--text-light); font-size: 0.85rem;">
+            <p>الحساب الافتراضي للمدير:</p>
+            <p>admin@school.edu.ps / Admin123!</p>
+        </div>
+    </div>
+    <script src="/js/api.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const alert = document.getElementById('alert');
+            
+            try {
+                const data = await apiClient.post('/api/auth/login', { email, password });
+                window.location.href = data.user.role === 'admin' ? '/admin-dashboard' : '/teacher-dashboard';
+            } catch (err) {
+                alert.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>
